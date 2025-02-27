@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String   @unique
+  password      String
+  role          String   // Adm, Recepção, Profissional, Paciente
+  cpf           String   @unique
+  birthDate     DateTime
+  gender        String
+  maritalStatus String
+  fatherName    String
+  motherName    String
+  phone         String
+  address       Json     // Endereço completo (objeto JSON)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  basePrice   Float
+  duration    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Insurance {
+  id        Int      @id @default(autoincrement())
+  name      String
+  discount  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  name      String
+  capacity  Int
+  equipment Json     // Lista de equipamentos (objeto JSON)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Reservation {
+  id            Int      @id @default(autoincrement())
+  roomId        Int
+  professionalId Int
+  startDateTime DateTime
+  endDateTime   DateTime
+  status        String   // Confirmada, Cancelada, Pendente
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("reservations")
+}
+
+model Appointment {
+  id            Int      @id @default(autoincrement())
+  patientId     Int
+  serviceId     Int
+  professionalId Int
+  roomId        Int
+  insuranceId   Int?
+  dateTime      DateTime
+  status        String   // Solicitado, Confirmado, Realizado, Cancelado
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("appointments")
+}
+
+model Attendance {
+  id            Int      @id @default(autoincrement())
+  appointmentId Int
+  anamnesis     Json     // Anamnese (objeto JSON)
+  medicalRecord Json     // Prontuário/evolução (objeto JSON)
+  status        String   // Em espera, Em atendimento, Finalizado
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("attendances")
+}
+
+model Financial {
+  id              Int      @id @default(autoincrement())
+  attendanceId    Int
+  totalAmount     Float
+  insuranceDiscount Float
+  professionalAmount Float
+  clinicAmount    Float
+  paymentStatus   String   // Pendente, Pago, Cancelado
+  paymentMethod   String   // Dinheiro, Cartão, Pix
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("financials")
+}
+
+model Configuration {
+  id            Int      @id @default(autoincrement())
+  clinicName    String
+  clinicAddress Json     // Endereço da clínica (objeto JSON)
+  clinicPhone   String
+  clinicEmail   String
+  taxRate       Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("configurations")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement
