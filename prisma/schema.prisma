@@ -4,54 +4,76 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // URL do banco de dados (definida no .env)
 }
 
+// Model: User (Usuários)
 model User {
-  id            Int      @id @default(autoincrement())
+  id            Int            @id @default(autoincrement())
   name          String
-  email         String   @unique
+  email         String         @unique
   password      String
-  role          String   // Adm, Recepção, Profissional, Paciente
-  cpf           String   @unique
+  role          String         // Adm, Recepção, Profissional, Paciente
+  cpf           String         @unique
   birthDate     DateTime
   gender        String
   maritalStatus String
   fatherName    String
   motherName    String
   phone         String
-  address       Json     // Endereço completo (objeto JSON)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  address       Json           // Endereço completo (objeto JSON)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relacionamentos
+  reservations  Reservation[]  // Um usuário pode ter várias reservas
+  patientAppointments Appointment[] @relation("PatientAppointments") // Agendamentos como paciente
+  professionalAppointments Appointment[] @relation("ProfessionalAppointments") // Agendamentos como profissional
+  attendances   Attendance[]   // Um usuário pode ter vários atendimentos
+  auditLogs     AuditLog[]     // Logs de auditoria associados ao usuário
 }
 
+// Model: Service (Serviços)
 model Service {
   id          Int      @id @default(autoincrement())
   name        String
   description String
   basePrice   Float
-  duration    Int
+  duration    Int      // Duração em minutos
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  appointments Appointment[] // Um serviço pode estar em vários agendamentos
 }
 
+// Model: Insurance (Convênios)
 model Insurance {
   id        Int      @id @default(autoincrement())
   name      String
-  discount  Float
+  discount  Float    // Desconto em porcentagem
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  appointments Appointment[] // Um convênio pode estar em vários agendamentos
 }
 
+// Model: Room (Salas)
 model Room {
   id        Int      @id @default(autoincrement())
   name      String
-  capacity  Int
+  capacity  Int      // Capacidade máxima de pessoas
   equipment Json     // Lista de equipamentos (objeto JSON)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  reservations Reservation[] // Uma sala pode ter várias reservas
+  appointments Appointment[] // Uma sala pode estar em vários agendamentos
 }
 
+// Model: Reservation (Reservas)
 model Reservation {
   id            Int      @id @default(autoincrement())
   roomId        Int
@@ -62,9 +84,12 @@ model Reservation {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@map("reservations")
+  // Relacionamentos
+  room        Room   @relation(fields: [roomId], references: [id])
+  professional User  @relation(fields: [professionalId], references: [id])
 }
 
+// Model: Appointment (Agendamentos)
 model Appointment {
   id            Int      @id @default(autoincrement())
   patientId     Int
@@ -78,24 +103,36 @@ model Appointment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@map("appointments")
+  // Relacionamentos
+  patient      User     @relation("PatientAppointments", fields: [patientId], references: [id])
+  service      Service  @relation(fields: [serviceId], references: [id])
+  professional User     @relation("ProfessionalAppointments", fields: [professionalId], references: [id])
+  room         Room     @relation(fields: [roomId], references: [id])
+  insurance    Insurance? @relation(fields: [insuranceId], references: [id])
+  attendance   Attendance? // Um agendamento pode ter um atendimento
 }
 
+// Model: Attendance (Atendimentos)
 model Attendance {
   id            Int      @id @default(autoincrement())
-  appointmentId Int
+  appointmentId Int      @unique
   anamnesis     Json     // Anamnese (objeto JSON)
   medicalRecord Json     // Prontuário/evolução (objeto JSON)
   status        String   // Em espera, Em atendimento, Finalizado
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@map("attendances")
+  // Relacionamentos
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  financial   Financial?  // Um atendimento pode ter um registro financeiro
+  user        User        @relation(fields: [userId], references: [id]) // Relação com User
+  userId      Int         // Campo para a relação com User
 }
 
+// Model: Financial (Financeiro)
 model Financial {
   id              Int      @id @default(autoincrement())
-  attendanceId    Int
+  attendanceId    Int      @unique
   totalAmount     Float
   insuranceDiscount Float
   professionalAmount Float
@@ -105,21 +142,32 @@ model Financial {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  @@map("financials")
+  // Relacionamentos
+  attendance Attendance @relation(fields: [attendanceId], references: [id])
 }
 
+// Model: Configuration (Configurações)
 model Configuration {
   id            Int      @id @default(autoincrement())
   clinicName    String
   clinicAddress Json     // Endereço da clínica (objeto JSON)
   clinicPhone   String
   clinicEmail   String
-  taxRate       Float
+  taxRate       Float    // Taxa de repasse para a clínica
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  @@map("configurations")
 }
 
+// Model: AuditLog (Logs de Auditoria)
 model AuditLog {
-  id        Int      @id @default(autoincrement
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String   // Ação realizada (ex: Criar usuário)
+  entity    String   // Entidade afetada (ex: User)
+  entityId  Int      // ID da entidade afetada
+  timestamp DateTime @default(now())
+  details   Json     // Detalhes da ação (objeto JSON)
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id])
+}
